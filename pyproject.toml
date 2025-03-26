@@ -15,8 +15,11 @@ dependencies = [
     "wandb",
     "webdataset",
     "hf_transfer",
+    "numpy",
     "pandas",
     "matplotlib",
+    "omegaconf",
+    "tqdm",
 ]
 
 [tool.setuptools.packages.find]

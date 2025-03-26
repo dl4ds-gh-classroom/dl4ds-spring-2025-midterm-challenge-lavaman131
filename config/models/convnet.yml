@@ -1,0 +1,21 @@
+base_model: ConvNet
+num_classes: 100
+input_size: [32, 32]
+act_layer: ReLU
+
+blocks:
+  - in_channels: 3
+    out_channels: 64
+    kernel_size: 3
+    stride: 1
+    padding: 1
+  - in_channels: 64
+    out_channels: 64
+    kernel_size: 3
+    stride: 1
+    padding: 1
+  - in_channels: 64
+    out_channels: 128
+    kernel_size: 3
+    stride: 1
+    padding: 1

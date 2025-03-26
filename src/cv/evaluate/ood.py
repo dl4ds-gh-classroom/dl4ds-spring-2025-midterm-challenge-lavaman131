@@ -1,19 +1,25 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import torchvision
-import torchvision.transforms as transforms
 import os
 import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm  # For progress bars
-import wandb
 import urllib.request
+from omegaconf import DictConfig
+from typing import List
+from torch.utils.data import TensorDataset, DataLoader
+from torchvision.transforms import v2
+from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 
-def evaluate_ood(model, distortion_name, severity, CONFIG):
-    data_dir = CONFIG["ood_dir"]
-    device = CONFIG["device"]
+def evaluate_ood(
+    config: DictConfig,
+    model: nn.Module,
+    distortion_name: str,
+    severity: int,
+) -> List[int]:
+    data_dir = config.ood_dir
+    device = config.device
 
     # Load the OOD images
     images = np.load(os.path.join(data_dir, f"{distortion_name}.npy"))
@@ -26,17 +32,18 @@ def evaluate_ood(model, distortion_name, severity, CONFIG):
     # Convert to PyTorch tensors and create DataLoader
     images = torch.from_numpy(images).float() / 255.0  # Normalize to [0, 1]
     images = images.permute(0, 3, 1, 2)  # (N, H, W, C) -> (N, C, H, W)
-    dataset = torch.utils.data.TensorDataset(images)
-    dataloader = torch.utils.data.DataLoader(
+    dataset = TensorDataset(images)
+    dataloader = DataLoader(
         dataset,
-        batch_size=CONFIG["batch_size"],
+        batch_size=config.batch_size,
         shuffle=False,
-        num_workers=CONFIG["num_workers"],
-        pin_memory=True,
+        num_workers=config.num_workers,
+        pin_memory=config.pin_mem,
+        persistent_workers=config.persistent_workers,
     )
 
     # Normalize after converting to tensor
-    normalize = transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))
+    normalize = v2.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD)
 
     predictions = []  # Store predictions
     with torch.no_grad():
@@ -56,7 +63,7 @@ def evaluate_ood(model, distortion_name, severity, CONFIG):
 
 
 # Check if the files are already downloaded
-def files_already_downloaded(directory, num_files):
+def files_already_downloaded(directory: str, num_files: int) -> bool:
     for i in range(num_files):
         file_name = f"distortion{i:02d}.npy"
         file_path = os.path.join(directory, file_name)
@@ -65,9 +72,9 @@ def files_already_downloaded(directory, num_files):
     return True
 
 
-def evaluate_ood_test(model, CONFIG):
-    data_dir = CONFIG["ood_dir"]
-    device = CONFIG["device"]
+def evaluate_ood_test(config: DictConfig, model: nn.Module) -> List[int]:
+    data_dir = config.ood_dir
+    device = config.device
 
     num_files = 19  # Number of files to download
 
@@ -102,14 +109,19 @@ def evaluate_ood_test(model, CONFIG):
     model.eval()  # Ensure model is in evaluation mode
     for distortion in distortions:
         for severity in range(1, 6):
-            predictions = evaluate_ood(model, distortion, severity, CONFIG)
+            predictions = evaluate_ood(
+                config=config,
+                model=model,
+                distortion_name=distortion,
+                severity=severity,
+            )
             all_predictions.extend(predictions)  # Accumulate predictions
             print(f"{distortion} (Severity {severity})")
 
     return all_predictions
 
 
-def create_ood_df(all_predictions):
+def create_ood_df(all_predictions: List[int]) -> pd.DataFrame:
     distortions = [f"distortion{str(i).zfill(2)}" for i in range(19)]
 
     # --- Create Submission File (OOD) ---
