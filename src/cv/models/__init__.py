@@ -29,25 +29,14 @@ class ConvNet(nn.Module):
         self.conv_blocks = nn.Sequential(
             *[ConvBlock(**block, act_layer=act_layer) for block in blocks]
         )
-        in_features = ConvNet.compute_fc_in_features(self.input_size, blocks)
-        self.fc = nn.Linear(in_features, num_classes)
-
-    @staticmethod
-    def compute_fc_in_features(
-        input_size: Tuple[int, int], blocks: List[Mapping[str, Any]]
-    ) -> int:
-        h, w = input_size
-        for block in blocks:
-            h = (
-                (h + 2 * block["padding"] - block["kernel_size"]) // block["stride"]
-            ) + 1  # type: ignore
-            w = (
-                (w + 2 * block["padding"] - block["kernel_size"]) // block["stride"]
-            ) + 1  # type: ignore
-        return h * w * blocks[-1]["out_channels"]  # type: ignore
+        self.fc1 = nn.Linear(2048, 128)
+        self.fc2 = nn.Linear(128, num_classes)
+        self.dropout = nn.Dropout(p=0.25)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv_blocks(x)
         x = x.view(x.size(0), -1)
-        x = self.fc(x)
+        x = self.fc1(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
         return x

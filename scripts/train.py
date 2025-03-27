@@ -99,6 +99,7 @@ def main() -> None:
 
     # Initialize wandb
     run = wandb.init(
+        name=config.experiment_name,
         project=config.project,
         entity=config.entity,
         config=OmegaConf.to_container(

@@ -20,6 +20,8 @@ dependencies = [
     "matplotlib",
     "omegaconf",
     "tqdm",
+    "ipykernel",
+    "ipywidgets"
 ]
 
 [tool.setuptools.packages.find]

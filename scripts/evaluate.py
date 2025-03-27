@@ -39,7 +39,7 @@ def main() -> None:
 
     model = build_model(config).to(config.device)
 
-    state_dict = torch.load(config.ckpt_path)
+    state_dict = torch.load(config.ckpt_path, weights_only=False)
 
     model.load_state_dict(state_dict["model"])
 
@@ -88,3 +88,7 @@ def main() -> None:
 
     submission_df_ood.to_csv(output_dir.joinpath("submission_ood.csv"), index=False)
     logger.info("submission_ood.csv created successfully.")
+
+
+if __name__ == "__main__":
+    main()

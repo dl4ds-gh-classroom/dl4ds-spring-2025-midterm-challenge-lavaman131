@@ -47,4 +47,6 @@ def build_scheduler(
     config: DictConfig,
     optimizer: optim.Optimizer,
 ) -> optim.lr_scheduler.LRScheduler:
-    return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config.epochs)
+    return optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=config.epochs, eta_min=config.min_lr
+    )
