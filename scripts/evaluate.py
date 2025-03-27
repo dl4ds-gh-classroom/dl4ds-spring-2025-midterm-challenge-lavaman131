@@ -1,4 +1,5 @@
 import torch
+from cv.data.transforms import make_classification_eval_transform
 from cv.evaluate.cifar100 import evaluate_cifar100_test
 from cv.evaluate.ood import evaluate_ood_test, create_ood_df
 import logging
@@ -52,12 +53,11 @@ def main() -> None:
     # Evaluation -- shouldn't have to change the following code
     ############################################################################
 
-    transform_test = v2.Compose(
-        [
-            v2.ToImage(),
-            v2.ToDtype(torch.float32, scale=True),
-            v2.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
-        ]
+    transform_test = make_classification_eval_transform(
+        resize_size=config.transforms.resize_size,
+        crop_size=config.input_size,
+        mean=IMAGENET_DEFAULT_MEAN,
+        std=IMAGENET_DEFAULT_STD,
     )
     # (Create validation and test loaders)
     test_dataset = datasets.CIFAR100(

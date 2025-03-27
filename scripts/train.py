@@ -3,6 +3,7 @@ from torchvision.transforms import v2
 from torchvision import datasets
 import wandb
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+from cv.data.transforms import make_classification_train_transform
 from cv.utils.build import build_model, build_optimizer, build_scheduler
 from cv.utils.config import parse_config
 from pathlib import Path
@@ -44,12 +45,11 @@ def main() -> None:
 
     set_seed(config.seed)
 
-    transform_train = v2.Compose(
-        [
-            v2.ToImage(),
-            v2.ToDtype(torch.float32, scale=True),
-            v2.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
-        ]
+    transform_train = make_classification_train_transform(
+        crop_size=config.input_size,
+        hflip_prob=config.transforms.hflip_prob,
+        mean=IMAGENET_DEFAULT_MEAN,
+        std=IMAGENET_DEFAULT_STD,
     )
 
     train_dataset = datasets.CIFAR100(

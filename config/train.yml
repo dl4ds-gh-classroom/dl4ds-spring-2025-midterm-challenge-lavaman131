@@ -1,4 +1,4 @@
-experiment_name: "convnet-200epochs-adamw-cosine-annealing"
+experiment_name: "convnet-100_epochs-adamw-cosine_annealing"
 
 # data
 batch_size: 128
@@ -15,11 +15,11 @@ pin_mem: true # Pin CPU memory in DataLoader
 persistent_workers: true
 
 # train
-epochs: 200
+epochs: 100
 
 # optimizer parameters
 optim: "adamw"
-lr: 2e-4
+lr: 1e-3
 min_lr: 1e-6
 betas: [0.9, 0.999]
 label_smoothing: 0.0

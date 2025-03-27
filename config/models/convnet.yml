@@ -19,3 +19,7 @@ blocks:
     kernel_size: 3
     stride: 1
     padding: 1
+
+transforms:
+  hflip_prob: 0.0
+  resize_size: ${input_size}
