@@ -1,0 +1,12 @@
+base_model: ConvNet
+num_classes: 100
+input_size: [32, 32]
+act_layer: ReLU
+dropout: 0.0
+
+transforms:
+  hflip_prob: 0.5
+  brightness_prob: 0.5
+  solarize_prob: 0.2
+  color_jitter_prob: 0.8
+  resize_size: 32
