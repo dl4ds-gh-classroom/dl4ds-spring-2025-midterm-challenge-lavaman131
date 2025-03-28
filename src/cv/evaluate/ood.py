@@ -11,6 +11,10 @@ from torch.utils.data import TensorDataset, DataLoader
 from torchvision.transforms import v2
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
+from cv.data.dataset import CIFAR100
+from cv.data.transforms import make_classification_eval_transform
+from cv.utils.misc import get_dtype
+
 
 def evaluate_ood(
     config: DictConfig,
@@ -20,7 +24,7 @@ def evaluate_ood(
 ) -> List[int]:
     data_dir = config.ood_dir
     device = config.device
-
+    dtype = get_dtype(config.dtype)
     # Load the OOD images
     images = np.load(os.path.join(data_dir, f"{distortion_name}.npy"))
 
@@ -29,10 +33,15 @@ def evaluate_ood(
     end_index = severity * 10000
     images = images[start_index:end_index]
 
-    # Convert to PyTorch tensors and create DataLoader
-    images = torch.from_numpy(images).float() / 255.0  # Normalize to [0, 1]
-    images = images.permute(0, 3, 1, 2)  # (N, H, W, C) -> (N, C, H, W)
-    dataset = TensorDataset(images)
+    # Normalize after converting to tensor
+    test_transform = make_classification_eval_transform(
+        resize_size=config.transforms.resize_size,
+        crop_size=config.input_size,
+        mean=IMAGENET_DEFAULT_MEAN,
+        std=IMAGENET_DEFAULT_STD,
+    )
+
+    dataset = CIFAR100(data=images, transform=test_transform)
     dataloader = DataLoader(
         dataset,
         batch_size=config.batch_size,
@@ -42,9 +51,6 @@ def evaluate_ood(
         persistent_workers=config.persistent_workers,
     )
 
-    # Normalize after converting to tensor
-    normalize = v2.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD)
-
     predictions = []  # Store predictions
     with torch.no_grad():
         for inputs in tqdm(
@@ -52,12 +58,14 @@ def evaluate_ood(
             desc=f"Evaluating {distortion_name} (Severity {severity})",
             leave=False,
         ):
-            inputs = inputs[0]
-            inputs = normalize(inputs)  # Apply normalization
-            inputs = inputs.to(device)
+            with torch.autocast(
+                config.device_type, dtype=dtype, enabled=config.use_fp16
+            ):
+                inputs = inputs.to(device)
 
-            outputs = model(inputs)
-            _, predicted = outputs.max(1)
+                outputs = model(inputs)
+                _, predicted = outputs.max(1)
+
             predictions.extend(predicted.cpu().numpy())
     return predictions
 

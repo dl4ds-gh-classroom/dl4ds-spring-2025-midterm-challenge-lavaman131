@@ -12,6 +12,7 @@ class ConvBlock(nn.Module):
         stride: int,
         padding: int,
         act_layer: Callable[..., nn.Module],
+        dropout: float,
     ) -> None:
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)
@@ -21,7 +22,7 @@ class ConvBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(out_channels)
         self.act2 = act_layer()
         self.pool = nn.MaxPool2d(kernel_size=(2, 2))
-        self.dropout = nn.Dropout(p=0.25)
+        self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv1(x)

@@ -21,7 +21,8 @@ dependencies = [
     "omegaconf",
     "tqdm",
     "ipykernel",
-    "ipywidgets"
+    "ipywidgets",
+    "albumentations",
 ]
 
 [tool.setuptools.packages.find]

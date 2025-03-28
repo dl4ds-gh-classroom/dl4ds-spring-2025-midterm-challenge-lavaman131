@@ -27,3 +27,16 @@ def make_2tuple(
 
     assert isinstance(x, int)
     return (x, x)
+
+
+DTYPE_MAPPING = {
+    "bf16": torch.bfloat16,
+    "fp16": torch.float16,
+    "fp32": torch.float32,
+}
+
+
+def get_dtype(dtype: str) -> torch.dtype:
+    if dtype not in DTYPE_MAPPING:
+        raise ValueError(f"Invalid dtype: {dtype}")
+    return DTYPE_MAPPING[dtype]

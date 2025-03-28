@@ -3,8 +3,11 @@ from torch.utils.data import DataLoader
 from torch import nn
 from torch import optim
 from tqdm import tqdm
-from typing import Tuple
+from typing import Tuple, Optional
 import torch
+import torch.amp
+
+from cv.utils.misc import get_dtype
 
 
 def train_one_epoch(
@@ -14,6 +17,7 @@ def train_one_epoch(
     train_loader: DataLoader,
     optimizer: optim.Optimizer,
     loss_fn: nn.Module,
+    scaler: Optional[torch.amp.GradScaler] = None,
 ) -> Tuple[float, float]:
     """Train one epoch, e.g. all batches of one epoch."""
     device = config.device
@@ -27,20 +31,32 @@ def train_one_epoch(
         train_loader, desc=f"Epoch {epoch + 1}/{config.epochs} [Train]", leave=False
     )
 
+    dtype = get_dtype(config.dtype)
+
     # iterate through all batches of one epoch
     for i, (inputs, labels) in enumerate(progress_bar):
-        # move inputs and labels to the target device
-        inputs, labels = (
-            inputs.to(device, non_blocking=True),
-            labels.to(device, non_blocking=True),
-        )
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=True)
 
-        ### TODO - Your code here
-        y_pred = model(inputs)
-        loss = loss_fn(y_pred, labels)
-        loss.backward()
-        optimizer.step()
+        with torch.autocast(config.device_type, dtype=dtype, enabled=config.use_fp16):
+            inputs, labels = (
+                inputs.to(device, non_blocking=True),
+                labels.to(device, non_blocking=True),
+            )
+            y_pred = model(inputs)
+            loss = loss_fn(y_pred, labels)
+
+        if scaler is not None:
+            scaler.scale(loss).backward()
+            if config.clip_grad is not None:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(), max_norm=config.clip_grad
+                )
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            loss.backward()
+            optimizer.step()
 
         running_loss += loss.detach().cpu().item()
         _, predicted = y_pred.max(1)
@@ -71,6 +87,8 @@ def validate(
     running_loss = 0.0
     correct = 0
     total = 0
+    device = config.device
+    dtype = get_dtype(config.dtype)
 
     with torch.no_grad():  # No need to track gradients
         # Put the valloader iterator in tqdm to print progress
@@ -78,11 +96,13 @@ def validate(
 
         # Iterate throught the validation set
         for i, (inputs, labels) in enumerate(progress_bar):
-            # move inputs and labels to the target device
-            inputs, labels = (
-                inputs.to(config.device, non_blocking=True),
-                labels.to(config.device, non_blocking=True),
-            )
+            with torch.autocast(
+                config.device_type, dtype=dtype, enabled=config.use_fp16
+            ):
+                inputs, labels = (
+                    inputs.to(device, non_blocking=True),
+                    labels.to(device, non_blocking=True),
+                )
 
             outputs = model(inputs)
             loss = loss_fn(outputs, labels)

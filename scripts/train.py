@@ -3,14 +3,18 @@ from torchvision.transforms import v2
 from torchvision import datasets
 import wandb
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
-from cv.data.transforms import make_classification_train_transform
+from cv.data.dataset import CIFAR100
+from cv.data.transforms import (
+    make_classification_eval_transform,
+    make_classification_train_transform,
+)
 from cv.utils.build import build_model, build_optimizer, build_scheduler
 from cv.utils.config import parse_config
 from pathlib import Path
 from cv.utils.misc import set_seed
 import torch.nn as nn
 from omegaconf import OmegaConf
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, Subset
 import torch.optim as optim
 from omegaconf import SCMode
 import logging
@@ -48,20 +52,37 @@ def main() -> None:
     transform_train = make_classification_train_transform(
         crop_size=config.input_size,
         hflip_prob=config.transforms.hflip_prob,
+        brightness_prob=config.transforms.brightness_prob,
+        solarize_prob=config.transforms.solarize_prob,
+        color_jitter_prob=config.transforms.color_jitter_prob,
+        mean=IMAGENET_DEFAULT_MEAN,
+        std=IMAGENET_DEFAULT_STD,
+    )
+    transform_val = make_classification_eval_transform(
+        resize_size=config.transforms.resize_size,
+        crop_size=config.input_size,
         mean=IMAGENET_DEFAULT_MEAN,
         std=IMAGENET_DEFAULT_STD,
     )
 
-    train_dataset = datasets.CIFAR100(
+    base_train_dataset = CIFAR100(
         root=config.data_dir, train=True, download=True, transform=transform_train
     )
-
-    # Split train into train and validation (80/20 split)
-    train_size = 0.8
-    val_size = 0.2
-    train_dataset, val_dataset = random_split(
-        train_dataset, lengths=[train_size, val_size]
+    base_val_dataset = CIFAR100(
+        root=config.data_dir, train=True, download=True, transform=transform_val
     )
+
+    # Generate indices for the split
+    train_size = int(0.8 * len(base_train_dataset))
+    val_size = len(base_train_dataset) - train_size
+    indices = torch.randperm(len(base_train_dataset))
+
+    train_indices = indices[:train_size]
+    val_indices = indices[train_size:]
+
+    # Create train and validation datasets with their respective transforms
+    train_dataset = Subset(base_train_dataset, train_indices)
+    val_dataset = Subset(base_val_dataset, val_indices)
 
     ### TODO -- define loaders
     train_loader = DataLoader(
@@ -92,10 +113,16 @@ def main() -> None:
     loss_fn = nn.CrossEntropyLoss(label_smoothing=config.label_smoothing)
     optimizer = build_optimizer(config, model)
     scheduler = build_scheduler(config, optimizer)
+    scaler = torch.amp.GradScaler(device=config.device) if config.use_fp16 else None
 
     epoch = 0
     if config.resume:
-        epoch = load_ckpt(ckpt_path=config.ckpt_path, model=model, optimizer=optimizer)
+        epoch = load_ckpt(
+            ckpt_path=config.ckpt_path,
+            model=model,
+            optimizer=optimizer,
+            scaler=scaler,
+        )
 
     # Initialize wandb
     run = wandb.init(
@@ -143,6 +170,7 @@ def main() -> None:
             save_ckpt(
                 model=model,
                 optimizer=optimizer,
+                scaler=scaler,
                 epoch=epoch,
                 ckpt_path=ckpt_path,
             )

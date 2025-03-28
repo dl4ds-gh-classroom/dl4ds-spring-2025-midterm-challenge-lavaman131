@@ -19,19 +19,45 @@ class ConvNet(nn.Module):
     def __init__(
         self,
         num_classes: int,
-        blocks: List[Mapping[str, Any]],
         input_size: Union[Tuple[int, int], int] = (32, 32),  # defaults to CIFAR size
         act_layer: Callable[..., nn.Module] = partial(nn.ReLU, inplace=True),
+        dropout: float = 0.25,
     ) -> None:
         super().__init__()
         self.input_size = make_2tuple(input_size)
         self.num_classes = num_classes
+        self.blocks = [
+            {
+                "in_channels": 3,
+                "out_channels": 64,
+                "kernel_size": 3,
+                "stride": 1,
+                "padding": 1,
+            },
+            {
+                "in_channels": 64,
+                "out_channels": 64,
+                "kernel_size": 3,
+                "stride": 1,
+                "padding": 1,
+            },
+            {
+                "in_channels": 64,
+                "out_channels": 128,
+                "kernel_size": 3,
+                "stride": 1,
+                "padding": 1,
+            },
+        ]
         self.conv_blocks = nn.Sequential(
-            *[ConvBlock(**block, act_layer=act_layer) for block in blocks]
+            *[
+                ConvBlock(**block, act_layer=act_layer, dropout=dropout)
+                for block in self.blocks
+            ]
         )
         self.fc1 = nn.Linear(2048, 128)
         self.fc2 = nn.Linear(128, num_classes)
-        self.dropout = nn.Dropout(p=0.25)
+        self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv_blocks(x)

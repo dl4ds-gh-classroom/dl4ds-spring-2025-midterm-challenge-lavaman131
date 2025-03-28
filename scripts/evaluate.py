@@ -1,4 +1,5 @@
 import torch
+from cv.data.dataset import CIFAR100
 from cv.data.transforms import make_classification_eval_transform
 from cv.evaluate.cifar100 import evaluate_cifar100_test
 from cv.evaluate.ood import evaluate_ood_test, create_ood_df
@@ -7,7 +8,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 from cv.utils.build import build_model
 from cv.utils.config import parse_config
-from cv.utils.misc import set_seed
+from cv.utils.misc import get_dtype, set_seed
 from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import v2
@@ -60,7 +61,7 @@ def main() -> None:
         std=IMAGENET_DEFAULT_STD,
     )
     # (Create validation and test loaders)
-    test_dataset = datasets.CIFAR100(
+    test_dataset = CIFAR100(
         root=config.data_dir, train=False, download=True, transform=transform_test
     )
     test_loader = DataLoader(
@@ -74,6 +75,7 @@ def main() -> None:
 
     # --- Evaluation on Clean CIFAR-100 Test Set ---
     predictions, clean_accuracy = evaluate_cifar100_test(
+        config=config,
         model=model,
         test_loader=test_loader,
         device=config.device,

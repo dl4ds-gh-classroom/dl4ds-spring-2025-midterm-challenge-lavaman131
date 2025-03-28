@@ -1,4 +1,4 @@
-experiment_name: "convnet-200epochs"
+experiment_name: "convnet-50_epochs-adamw-cosine_annealing-fp16-clahe-hflip_0.5-brightness_0.5-color_jitter_0.8"
 
 # data
 batch_size: 128
@@ -9,7 +9,11 @@ ood_dir: /raid4/datasets/cifar-100-ood
 output_dir: "./outputs/${experiment_name}"
 device: "cuda"
 seed: 0
-ckpt_path: "./outputs/part1/best_model.pth" # Resume from checkpoint if resume is true
+ckpt_path: "./outputs/${experiment_name}/best_model.pth" # Resume from checkpoint if resume is true
 num_workers: 4
 pin_mem: true # Pin CPU memory in DataLoader
 persistent_workers: true
+
+use_fp16: true
+dtype: "bf16"
+device_type: "cuda"

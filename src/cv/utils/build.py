@@ -21,9 +21,9 @@ def build_model(
     if config.base_model == "ConvNet":
         return ConvNet(
             config.num_classes,
-            config.blocks,
             config.input_size,
             act_layer=act_layer,
+            dropout=config.dropout,
         )
     else:
         raise NotImplementedError(f"Model {config.base_model} not supported")
