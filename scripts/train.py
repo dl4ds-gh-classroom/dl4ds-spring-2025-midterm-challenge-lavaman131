@@ -8,10 +8,10 @@ from cv.data.transforms import (
     make_classification_eval_transform,
     make_classification_train_transform,
 )
-from cv.utils.build import build_model, build_optimizer, build_scheduler
+from cv.utils.build import build_model, build_optimizer, build_scheduler, scale_lr
 from cv.utils.config import parse_config
 from pathlib import Path
-from cv.utils.misc import set_seed
+from cv.utils.misc import get_decay_parameters, set_seed
 import torch.nn as nn
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader, random_split, Subset
@@ -23,6 +23,9 @@ from argparse import ArgumentParser, Namespace
 from cv.utils.save import load_ckpt, save_ckpt
 from cv.train import train_one_epoch, validate
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("train")
 logger.setLevel(logging.INFO)
 
@@ -35,6 +38,7 @@ def get_args() -> Namespace:
 
 
 def main() -> None:
+    torch.set_float32_matmul_precision("high")
     args = get_args()
     base_config_path = Path(args.base_config_dir)
 
@@ -50,19 +54,12 @@ def main() -> None:
     set_seed(config.seed)
 
     transform_train = make_classification_train_transform(
+        transform_config=config.transforms,
         crop_size=config.input_size,
-        hflip_prob=config.transforms.hflip_prob,
-        brightness_prob=config.transforms.brightness_prob,
-        solarize_prob=config.transforms.solarize_prob,
-        color_jitter_prob=config.transforms.color_jitter_prob,
-        mean=IMAGENET_DEFAULT_MEAN,
-        std=IMAGENET_DEFAULT_STD,
     )
     transform_val = make_classification_eval_transform(
         resize_size=config.transforms.resize_size,
         crop_size=config.input_size,
-        mean=IMAGENET_DEFAULT_MEAN,
-        std=IMAGENET_DEFAULT_STD,
     )
 
     base_train_dataset = CIFAR100(
@@ -93,6 +90,13 @@ def main() -> None:
         pin_memory=config.pin_mem,
         persistent_workers=config.persistent_workers,
     )
+
+    cutmix_or_mixup = None
+    if config.cutmix_or_mixup:
+        cutmix = v2.CutMix(num_classes=config.num_classes)
+        mixup = v2.MixUp(num_classes=config.num_classes)
+        cutmix_or_mixup = v2.RandomChoice([cutmix, mixup])
+
     val_loader = DataLoader(
         val_dataset,
         batch_size=config.batch_size,
@@ -107,11 +111,14 @@ def main() -> None:
     ############################################################################
     model = build_model(config).to(config.device)
 
+    logger.info(f"Model: {model}")
+
     ############################################################################
     # Loss Function, Optimizer and optional learning rate scheduler
     ############################################################################
     loss_fn = nn.CrossEntropyLoss(label_smoothing=config.label_smoothing)
-    optimizer = build_optimizer(config, model)
+    config.lr = scale_lr(config.base_lr, config.batch_size)
+    optimizer = build_optimizer(config, model.parameters())
     scheduler = build_scheduler(config, optimizer)
     scaler = torch.amp.GradScaler(device=config.device) if config.use_fp16 else None
 
@@ -144,7 +151,13 @@ def main() -> None:
 
     for epoch in range(config.epochs):
         train_loss, train_acc = train_one_epoch(
-            config, epoch, model, train_loader, optimizer, loss_fn=loss_fn
+            config,
+            epoch,
+            model,
+            train_loader,
+            optimizer,
+            loss_fn=loss_fn,
+            cutmix_or_mixup=cutmix_or_mixup,
         )
         val_loss, val_acc = validate(
             config=config, model=model, val_loader=val_loader, loss_fn=loss_fn

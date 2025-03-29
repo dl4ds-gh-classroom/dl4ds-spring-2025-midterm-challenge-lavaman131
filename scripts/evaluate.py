@@ -14,6 +14,9 @@ from torchvision import datasets
 from torchvision.transforms import v2
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("evaluate")
 logger.setLevel(logging.INFO)
 
@@ -26,6 +29,7 @@ def get_args():
 
 
 def main() -> None:
+    torch.set_float32_matmul_precision("high")
     args = get_args()
     base_config_path = Path(args.base_config_dir)
 
@@ -50,6 +54,8 @@ def main() -> None:
 
     model.eval()
 
+    model = torch.compile(model)
+
     ############################################################################
     # Evaluation -- shouldn't have to change the following code
     ############################################################################
@@ -57,8 +63,6 @@ def main() -> None:
     transform_test = make_classification_eval_transform(
         resize_size=config.transforms.resize_size,
         crop_size=config.input_size,
-        mean=IMAGENET_DEFAULT_MEAN,
-        std=IMAGENET_DEFAULT_STD,
     )
     # (Create validation and test loaders)
     test_dataset = CIFAR100(

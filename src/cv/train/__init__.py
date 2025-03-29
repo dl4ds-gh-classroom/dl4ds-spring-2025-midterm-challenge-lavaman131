@@ -18,6 +18,7 @@ def train_one_epoch(
     optimizer: optim.Optimizer,
     loss_fn: nn.Module,
     scaler: Optional[torch.amp.GradScaler] = None,
+    cutmix_or_mixup: Optional[torch.nn.Module] = None,
 ) -> Tuple[float, float]:
     """Train one epoch, e.g. all batches of one epoch."""
     device = config.device
@@ -38,10 +39,15 @@ def train_one_epoch(
         optimizer.zero_grad(set_to_none=True)
 
         with torch.autocast(config.device_type, dtype=dtype, enabled=config.use_fp16):
-            inputs, labels = (
+            _inputs, _labels = (
                 inputs.to(device, non_blocking=True),
                 labels.to(device, non_blocking=True),
             )
+            if cutmix_or_mixup is None:
+                inputs, labels = _inputs, _labels
+            else:
+                inputs, labels = cutmix_or_mixup(_inputs, _labels)
+
             y_pred = model(inputs)
             loss = loss_fn(y_pred, labels)
 
@@ -61,8 +67,8 @@ def train_one_epoch(
         running_loss += loss.detach().cpu().item()
         _, predicted = y_pred.max(1)
 
-        total += labels.size(0)
-        correct += predicted.eq(labels).sum().item()
+        total += _labels.size(0)
+        correct += predicted.eq(_labels).sum().item()
 
         progress_bar.set_postfix(
             {"loss": running_loss / (i + 1), "acc": 100.0 * correct / total}

@@ -1,8 +1,11 @@
-base_model: convnet
+base_model: resnet101
+
 num_classes: 100
+pretrained: true
+freeze_backbone: false
 input_size: [32, 32]
-act_layer: LeakyReLU
-drop_rate: 0.2
 
 transforms:
   resize_size: ${input_size}
+
+drop_rate: 0.2

@@ -37,8 +37,6 @@ def evaluate_ood(
     test_transform = make_classification_eval_transform(
         resize_size=config.transforms.resize_size,
         crop_size=config.input_size,
-        mean=IMAGENET_DEFAULT_MEAN,
-        std=IMAGENET_DEFAULT_STD,
     )
 
     dataset = CIFAR100(data=images, transform=test_transform)

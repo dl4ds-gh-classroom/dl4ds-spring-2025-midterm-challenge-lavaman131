@@ -1,14 +1,25 @@
-from typing import Callable, Dict, Any
+from typing import Callable, Dict, Any, List
 import torch.nn as nn
 from omegaconf import DictConfig
 import torch.optim as optim
 from functools import partial
-from cv.models import ConvNet
+from cv.models import ConvNet, ResNet
+from cv.models.layers import resnet18, resnet34, resnet50
+from timm.optim import create_optimizer_v2
+import torch
+
+
+def scale_lr(lr: float, batch_size: int) -> float:
+    return lr * batch_size / 256.0
 
 
 def get_act_layer(act_layer: str) -> Callable[..., nn.Module]:
     if act_layer == "ReLU":
         return partial(nn.ReLU, inplace=True)
+    elif act_layer == "LeakyReLU":
+        return partial(nn.LeakyReLU, inplace=True)
+    elif act_layer == "GELU":
+        return nn.GELU
     else:
         raise NotImplementedError(f"Activation function {act_layer} not supported")
 
@@ -16,31 +27,43 @@ def get_act_layer(act_layer: str) -> Callable[..., nn.Module]:
 def build_model(
     config: DictConfig,
 ) -> nn.Module:
-    act_layer = get_act_layer(config.act_layer)
+    act_layer = get_act_layer(config.get("act_layer", "ReLU"))
 
-    if config.base_model == "ConvNet":
-        return ConvNet(
-            config.num_classes,
-            config.input_size,
+    if config.base_model == "convnet":
+        model = ConvNet(
+            num_classes=config.num_classes,
+            input_size=config.input_size,
             act_layer=act_layer,
-            dropout=config.dropout,
+            drop_rate=config.drop_rate,
+        )
+    elif "resnet" in config.base_model:
+        model = ResNet(
+            model_name=config.base_model,
+            num_classes=config.num_classes,
+            input_size=config.input_size,
+            pretrained=config.pretrained,
+            freeze_backbone=config.freeze_backbone,
+            act_layer=act_layer,
+            drop_rate=config.drop_rate,
         )
     else:
         raise NotImplementedError(f"Model {config.base_model} not supported")
 
+    return model
+
 
 def build_optimizer(
     config: DictConfig,
-    model: nn.Module,
+    parameters: List[Dict[str, Any]],
 ) -> optim.Optimizer:
-    if config.optim == "adamw":
-        return optim.AdamW(model.parameters(), lr=config.lr, betas=config.betas)
-    elif config.optim == "adam":
-        return optim.Adam(model.parameters(), lr=config.lr, betas=config.betas)
-    elif config.optim == "sgd":
-        return optim.SGD(model.parameters(), lr=config.lr, momentum=config.momentum)
-    else:
-        raise ValueError(f"Optimizer {config.optim} not supported")
+    optimizer = create_optimizer_v2(
+        parameters,
+        opt=config.optim,
+        lr=config.lr,
+        weight_decay=config.weight_decay,
+        momentum=config.momentum,
+    )
+    return optimizer
 
 
 def build_scheduler(

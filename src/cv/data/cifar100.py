@@ -1,4 +1,9 @@
-CLASSES = [
+from typing import Final, List, Tuple
+
+CIFAR_DEFAULT_MEAN: Final[Tuple[float, float, float]] = (0.4914, 0.4822, 0.4465)
+CIFAR_DEFAULT_STD: Final[Tuple[float, float, float]] = (0.2023, 0.1994, 0.2010)
+
+CLASSES: Final[List[str]] = [
     "apple",
     "aquarium_fish",
     "baby",
