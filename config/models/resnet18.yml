@@ -3,9 +3,10 @@ base_model: resnet18
 num_classes: 100
 pretrained: true
 freeze_backbone: false
+act_layer: Mish
 input_size: [32, 32]
 
 transforms:
   resize_size: ${input_size}
 
-drop_rate: 0.0
+drop_rate: 0.2

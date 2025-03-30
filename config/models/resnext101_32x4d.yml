@@ -1,4 +1,4 @@
-base_model: resnet101
+base_model: resnext101_32x4d
 
 num_classes: 100
 pretrained: true

@@ -3,6 +3,7 @@ base_model: resnet50
 num_classes: 100
 pretrained: true
 freeze_backbone: false
+act_layer: Mish
 input_size: [32, 32]
 
 transforms:

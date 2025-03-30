@@ -47,6 +47,13 @@ def make_classification_train_transform(
             limit=(-15, 15),
             interpolation=interpolation,
         ),
+        A.ColorJitter(
+            p=transform_config.color_jitter_prob,
+            brightness=0.4,
+            contrast=0.4,
+            saturation=0.2,
+            hue=0.1,
+        ),
         A.ImageCompression(
             p=transform_config.jpeg_compression_prob, quality_range=(90, 99)
         ),

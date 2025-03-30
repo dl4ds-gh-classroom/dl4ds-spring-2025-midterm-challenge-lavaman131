@@ -1,4 +1,4 @@
-experiment_name: "resnet50fc2-finetune-dr-0.2-wd-0.02-50_epochs-adoptw-lr_5e-4-cosine_annealing-fp16-clip_grad_3-clahe-hflip_0.5-brightness_0.5-gauss_noise_0.5-jpeg_compression_0.2_resized_crop_0.32_1.0-rotation_1.0-pad_4-bs_256-lbl_smoothing_0.1-cutmix_or_mixup_0.5"
+experiment_name: "resnext101_32x4d-fc128-finetune-dr-0.2-wd-0.02-50_epochs-adoptw-lr_5e-4-cosine_annealing-fp16-clip_grad_3-color_jitter_0.8-mish_act"
 
 # data
 batch_size: 256
@@ -20,6 +20,7 @@ transforms:
   gaussian_noise_prob: 0.5
   jpeg_compression_prob: 0.2
   rotation_prob: 1.0
+  color_jitter_prob: 0.8
 
 cutmix_or_mixup: true
 

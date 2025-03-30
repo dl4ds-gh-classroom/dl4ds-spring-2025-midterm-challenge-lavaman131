@@ -97,6 +97,7 @@ class ResNet(nn.Module):
         pretrained: bool = True,
         freeze_backbone: bool = True,
         drop_rate: float = 0.0,
+        act_layer: Callable[..., nn.Module] = partial(nn.ReLU, inplace=True),
         **kwargs: Any,
     ) -> None:
         super().__init__()
@@ -105,6 +106,7 @@ class ResNet(nn.Module):
             pretrained=pretrained,
             num_classes=0,
             global_pool="",
+            act_layer=act_layer,
             **kwargs,
         )
         self.model.conv1 = nn.Conv2d(

@@ -20,6 +20,8 @@ def get_act_layer(act_layer: str) -> Callable[..., nn.Module]:
         return partial(nn.LeakyReLU, inplace=True)
     elif act_layer == "GELU":
         return nn.GELU
+    elif act_layer == "Mish":
+        return partial(nn.Mish, inplace=True)
     else:
         raise NotImplementedError(f"Activation function {act_layer} not supported")
 
@@ -36,7 +38,7 @@ def build_model(
             act_layer=act_layer,
             drop_rate=config.drop_rate,
         )
-    elif "resnet" in config.base_model:
+    elif "res" in config.base_model:
         model = ResNet(
             model_name=config.base_model,
             num_classes=config.num_classes,
