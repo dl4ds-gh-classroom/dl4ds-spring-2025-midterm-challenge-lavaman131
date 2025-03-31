@@ -1,6 +1,7 @@
+from functools import partial
 from torchvision.transforms import v2
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
-from typing import Sequence, Union, Tuple
+from typing import Sequence, Union, Tuple, Literal, List, Callable
 import torch
 import albumentations as A
 import cv2
@@ -88,3 +89,47 @@ def make_classification_eval_transform(
         ToTensorV2(),
     ]  # type: ignore
     return A.Compose(transforms_list)
+
+
+# ==================== MODEL TRANSFORMS ====================
+
+
+def compute_shift_directions(
+    pattern: Literal["Neumann", "Moore"],
+) -> List[Tuple[int, int]]:
+    # Precompute neighbourhood shift unit vectors
+    shifts = [  # shifts in yx format
+        (-1, -1),
+        (-1, 0),
+        (-1, 1),
+        (0, -1),
+        (0, 0),
+        (0, 1),
+        (1, -1),
+        (1, 0),
+        (1, 1),
+    ]
+    shift_directions: List[Tuple[int, int]] = []
+    for i in range(len(shifts)):
+        if pattern == "Neumann" and i % 2 == 1:
+            shift_directions.append(shifts[i])
+        elif pattern == "Moore" and i != 4:
+            shift_directions.append(shifts[i])
+    return shift_directions
+
+
+def get_shift_transforms(
+    dists: List[int], pattern: Literal["Neumann", "Moore"]
+) -> List[Callable]:
+    transforms: List[Callable] = []
+    shifts = compute_shift_directions(pattern)
+
+    def roll_arg_rev(shift: Tuple[int, int], x: torch.Tensor) -> torch.Tensor:
+        return torch.roll(x, shift, dims=(-2, -1))
+
+    for d in dists:
+        for s in shifts:
+            shift = (d * s[0], d * s[1])
+            transform = partial(roll_arg_rev, shift)
+            transforms.append(transform)
+    return transforms

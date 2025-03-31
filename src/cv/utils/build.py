@@ -3,10 +3,10 @@ import torch.nn as nn
 from omegaconf import DictConfig
 import torch.optim as optim
 from functools import partial
-from cv.models import ConvNet, ResNet
-from cv.models.layers import resnet18, resnet34, resnet50
+from cv.models import ConvNet, ResNeXt, ResNet
 from timm.optim import create_optimizer_v2
-import torch
+from cv.utils.misc import CosineScheduler
+from torch.optim.lr_scheduler import LRScheduler
 
 
 def scale_lr(lr: float, batch_size: int) -> float:
@@ -38,7 +38,7 @@ def build_model(
             act_layer=act_layer,
             drop_rate=config.drop_rate,
         )
-    elif "res" in config.base_model:
+    elif "resnet" in config.base_model:
         model = ResNet(
             model_name=config.base_model,
             num_classes=config.num_classes,
@@ -47,6 +47,20 @@ def build_model(
             freeze_backbone=config.freeze_backbone,
             act_layer=act_layer,
             drop_rate=config.drop_rate,
+            drop_block_rate=config.drop_block_rate,
+        )
+    elif "resnext" in config.base_model:
+        model = ResNeXt(
+            model_name=config.base_model,
+            num_classes=config.num_classes,
+            input_size=config.input_size,
+            pretrained=config.pretrained,
+            freeze_backbone=config.freeze_backbone,
+            act_layer=act_layer,
+            drop_rate=config.drop_rate,
+            drop_block_rate=config.drop_block_rate,
+            cardinality=config.cardinality,
+            base_width=config.base_width,
         )
     else:
         raise NotImplementedError(f"Model {config.base_model} not supported")
@@ -71,7 +85,11 @@ def build_optimizer(
 def build_scheduler(
     config: DictConfig,
     optimizer: optim.Optimizer,
-) -> optim.lr_scheduler.LRScheduler:
-    return optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=config.epochs, eta_min=config.min_lr
+) -> LRScheduler:
+    return CosineScheduler(
+        optimizer,
+        T_max=config.epochs,
+        eta_min=config.min_lr,
+        warmup_epochs=config.warmup_epochs,
+        warmup_start_lr=config.warmup_start_lr,
     )

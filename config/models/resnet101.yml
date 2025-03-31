@@ -9,4 +9,5 @@ input_size: [32, 32]
 transforms:
   resize_size: ${input_size}
 
-drop_rate: 0.2
+drop_rate: 0.5
+drop_block_rate: 0.0 # 0.1

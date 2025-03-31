@@ -144,3 +144,69 @@ class ResNet(nn.Module):
         x = self.forward_features(x)
         x = self.forward_head(x)
         return x
+
+
+class ResNeXt(nn.Module):
+    def __init__(
+        self,
+        model_name: Literal["resnext50_32x4d", "resnext101_32x4d"],
+        num_classes: int,
+        input_size: Union[Tuple[int, int], int] = (32, 32),  # defaults to CIFAR size
+        in_channels: int = 3,
+        pretrained: bool = True,
+        freeze_backbone: bool = True,
+        drop_rate: float = 0.0,
+        act_layer: Callable[..., nn.Module] = partial(nn.ReLU, inplace=True),
+        cardinality: int = 32,
+        base_width: int = 4,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__()
+        self.model = create_model(
+            model_name=model_name,
+            pretrained=pretrained,
+            num_classes=0,
+            global_pool="",
+            act_layer=act_layer,
+            **kwargs,
+        )
+        self.cardinality = cardinality
+        self.base_width = base_width
+        self.model.conv1 = nn.Conv2d(
+            in_channels, 64, kernel_size=3, stride=1, padding=1, bias=False
+        )
+        self.model.maxpool = nn.Identity()
+        # self.model.layer4 = nn.Identity()
+        # self.model.avgpool = nn.AvgPool2d(kernel_size=8)
+        self.model.avgpool = nn.AvgPool2d(kernel_size=4)
+        # self.model.fc1 = nn.Linear(self.cardinality * self.base_width * 8, 128)
+        self.model.fc1 = nn.Linear(self.model.num_features, 128)
+        self.model.dropout = nn.Dropout(p=drop_rate)
+        self.model.fc2 = nn.Linear(128, num_classes)
+        if freeze_backbone:
+            self.freeze_backbone()
+
+    def freeze_backbone(self) -> None:
+        for param in self.model.parameters():
+            param.requires_grad = False
+
+        self.model.fc1.weight.requires_grad = True
+        self.model.fc1.bias.requires_grad = True
+        self.model.fc2.weight.requires_grad = True
+        self.model.fc2.bias.requires_grad = True
+
+    def forward_head(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.model.avgpool(x)
+        x = torch.flatten(x, start_dim=1)
+        x = self.model.fc1(x)
+        x = self.model.dropout(x)
+        x = self.model.fc2(x)
+        return x
+
+    def forward_features(self, x: torch.Tensor) -> torch.Tensor:
+        return self.model.forward_features(x)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.forward_features(x)
+        x = self.forward_head(x)
+        return x

@@ -1,7 +1,7 @@
 import torch
 from cv.data.dataset import CIFAR100
 from cv.data.transforms import make_classification_eval_transform
-from cv.evaluate.cifar100 import evaluate_cifar100_test
+from cv.evaluate.cifar100 import evaluate_cifar100_test, evaluate_cifar100_ttc
 from cv.evaluate.ood import evaluate_ood_test, create_ood_df
 import logging
 from argparse import ArgumentParser
@@ -54,8 +54,6 @@ def main() -> None:
 
     model.eval()
 
-    model = torch.compile(model)
-
     ############################################################################
     # Evaluation -- shouldn't have to change the following code
     ############################################################################
@@ -77,8 +75,13 @@ def main() -> None:
         persistent_workers=config.persistent_workers,
     )
 
+    if config.ttc:
+        evaluate_fn = evaluate_cifar100_ttc
+    else:
+        evaluate_fn = evaluate_cifar100_test
+
     # --- Evaluation on Clean CIFAR-100 Test Set ---
-    predictions, clean_accuracy = evaluate_cifar100_test(
+    predictions, clean_accuracy = evaluate_fn(
         config=config,
         model=model,
         test_loader=test_loader,
@@ -87,7 +90,10 @@ def main() -> None:
     logger.info(f"Clean CIFAR-100 Test Accuracy: {clean_accuracy:.2f}%")
 
     # --- Evaluation on OOD ---
-    all_predictions = evaluate_ood_test(config=config, model=model)
+    all_predictions = evaluate_ood_test(
+        config=config,
+        model=model,
+    )
 
     # --- Create Submission File (OOD) ---
     submission_df_ood = create_ood_df(all_predictions)

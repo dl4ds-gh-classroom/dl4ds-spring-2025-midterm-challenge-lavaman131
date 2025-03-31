@@ -6,6 +6,10 @@ import os
 from omegaconf import ListConfig
 from typing import Union, Tuple, Sequence, List, Dict, Any
 import torch.nn as nn
+import torch.optim as optim
+import math
+import warnings
+from torch.optim.lr_scheduler import LRScheduler, _warn_get_lr_called_within_step
 
 
 def set_seed(
@@ -88,3 +92,87 @@ def get_decay_parameters(
         ]
 
     return parameters
+
+
+class CosineScheduler(LRScheduler):
+    def __init__(
+        self,
+        optimizer: optim.Optimizer,
+        T_max: int,
+        eta_min: float = 0.0,
+        warmup_epochs: int = 0,
+        warmup_start_lr: float = 0.0,
+        last_epoch: int = -1,
+        verbose: str = "deprecated",
+    ) -> None:
+        """Cosine learning rate scheduler with optional warmup period.
+
+        Args:
+            optimizer: Wrapped optimizer.
+            T_max: Maximum number of iterations/epochs.
+            eta_min: Minimum learning rate.
+            warmup_epochs: Number of epochs to linearly increase learning rate from warmup_start_lr to base_lr.
+            warmup_start_lr: Initial learning rate during warmup period.
+            last_epoch: The index of the last epoch. Default: -1.
+            verbose: If True, prints a message to stdout for each update.
+        """
+        self.T_max = T_max
+        self.eta_min = eta_min
+        self.warmup_epochs = warmup_epochs
+        self.warmup_start_lr = warmup_start_lr
+
+        super().__init__(optimizer, last_epoch, verbose)
+
+    def get_lr(self) -> List[float]:
+        """Compute learning rate using chainable form of the scheduler."""
+        _warn_get_lr_called_within_step(self)
+
+        # During warmup period
+        if self.last_epoch < self.warmup_epochs:
+            alpha = self.last_epoch / self.warmup_epochs
+            return [
+                self.warmup_start_lr + alpha * (base_lr - self.warmup_start_lr)
+                for base_lr in self.base_lrs
+            ]
+
+        # During cosine annealing period
+        else:
+            effective_epoch = self.last_epoch - self.warmup_epochs
+            cosine_period = self.T_max - self.warmup_epochs
+
+            if effective_epoch >= cosine_period:
+                return [self.eta_min for _ in self.base_lrs]
+
+            return [
+                self.eta_min
+                + 0.5
+                * (base_lr - self.eta_min)
+                * (1 + math.cos(math.pi * effective_epoch / cosine_period))
+                for base_lr in self.base_lrs
+            ]
+
+    def _get_closed_form_lr(self) -> List[float]:
+        """Get the closed-form learning rate for specific cases."""
+        # During warmup period
+        if self.last_epoch < self.warmup_epochs:
+            alpha = self.last_epoch / self.warmup_epochs
+            return [
+                self.warmup_start_lr + alpha * (base_lr - self.warmup_start_lr)
+                for base_lr in self.base_lrs
+            ]
+
+        # During cosine annealing period
+        else:
+            effective_epoch = self.last_epoch - self.warmup_epochs
+            cosine_period = self.T_max - self.warmup_epochs
+
+            if effective_epoch >= cosine_period:
+                return [self.eta_min for _ in self.base_lrs]
+
+            return [
+                self.eta_min
+                + 0.5
+                * (base_lr - self.eta_min)
+                * (1 + math.cos(math.pi * effective_epoch / cosine_period))
+                for base_lr in self.base_lrs
+            ]

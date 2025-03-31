@@ -11,12 +11,12 @@ python -m pip install -r requirements.txt
 ## Training
 
 ```bash
-python scripts/train.py --base_config_dir ./config --model_config convnet.yml
+python scripts/train.py --base_config_dir ./config --model_config resnext50_32x4d.yml
 ```
 
 ## Evaluation
 
 ```bash
-python scripts/evaluate.py --base_config_dir ./config --model_config convnet.yml
+python scripts/evaluate.py --base_config_dir ./config --model_config resnext50_32x4d.yml
 ```
 

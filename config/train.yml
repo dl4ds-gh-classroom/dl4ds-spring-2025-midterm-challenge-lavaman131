@@ -1,4 +1,4 @@
-experiment_name: "resnext101_32x4d-fc128-finetune-dr-0.2-wd-0.02-50_epochs-adoptw-lr_5e-4-cosine_annealing-fp16-clip_grad_3-color_jitter_0.8-mish_act"
+experiment_name: "resnext50_32x4d-finetune-fc128-dr-0.5-dbr-0.0-wd-0.02-50_epochs-adoptw-lr_2e-4-cosine_annealing-warmup_4_epochs-fp16-clip_grad_3-color_jitter_0.8-mish_act"
 
 # data
 batch_size: 256
@@ -6,7 +6,7 @@ batch_size: 256
 data_dir: /raid4/datasets
 
 output_dir: "./outputs/${experiment_name}"
-device: "cuda"
+device: "cuda:1"
 seed: 0
 resume: false
 ckpt_path: "" # Resume from checkpoint if resume is true
@@ -33,9 +33,13 @@ clip_grad: 3.0
 
 # optimizer parameters
 optim: "adoptw"
-base_lr: 5e-4
+base_lr: 2e-4
 min_lr: 1e-6
 betas: [0.9, 0.9999]
 momentum: 0.9
 weight_decay: 0.02
 label_smoothing: 0.1
+
+# scheduler parameters
+warmup_epochs: 4
+warmup_start_lr: 0
