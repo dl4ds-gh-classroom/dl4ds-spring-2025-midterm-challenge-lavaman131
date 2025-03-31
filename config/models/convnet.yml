@@ -1,0 +1,8 @@
+base_model: convnet
+num_classes: 100
+input_size: [32, 32]
+act_layer: LeakyReLU
+drop_rate: 0.2
+
+transforms:
+  resize_size: ${input_size}

@@ -1,0 +1,16 @@
+base_model: resnext50_32x4d.a1h_in1k
+
+cardinality: 32
+base_width: 4
+
+num_classes: 100
+pretrained: true
+freeze_backbone: false
+act_layer: Mish
+input_size: [32, 32]
+
+transforms:
+  resize_size: ${input_size}
+
+drop_rate: 0.5
+drop_block_rate: 0.0 # 0.1

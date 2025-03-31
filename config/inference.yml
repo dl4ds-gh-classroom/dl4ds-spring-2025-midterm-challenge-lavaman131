@@ -1,0 +1,23 @@
+experiment_name: "resnext50_32x4d-finetune-fc128-dr-0.5-dbr-0.0-wd-0.02-50_epochs-adoptw-lr_2e-4-cosine_annealing-warmup_4_epochs-fp16-clip_grad_3-color_jitter_0.8-mish_act"
+
+# data
+batch_size: 128
+ttc: true
+
+transforms:
+  resize_size: ${input_size}
+
+data_dir: /raid4/datasets
+ood_dir: /raid4/datasets/cifar-100-ood
+
+output_dir: "./outputs/${experiment_name}"
+device: "cuda"
+seed: 0
+ckpt_path: "./outputs/${experiment_name}/best_model.pth" # Resume from checkpoint if resume is true
+num_workers: 4
+pin_mem: true # Pin CPU memory in DataLoader
+persistent_workers: true
+
+use_fp16: true
+dtype: "bf16"
+device_type: "cuda"

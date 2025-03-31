@@ -1,0 +1,45 @@
+experiment_name: "resnext50_32x4d-finetune-fc128-dr-0.5-dbr-0.0-wd-0.02-50_epochs-adoptw-lr_2e-4-cosine_annealing-warmup_4_epochs-fp16-clip_grad_3-color_jitter_0.8-mish_act"
+
+# data
+batch_size: 256
+
+data_dir: /raid4/datasets
+
+output_dir: "./outputs/${experiment_name}"
+device: "cuda:1"
+seed: 0
+resume: false
+ckpt_path: "" # Resume from checkpoint if resume is true
+num_workers: 4
+pin_mem: true # Pin CPU memory in DataLoader
+persistent_workers: true
+
+transforms:
+  hflip_prob: 0.5
+  brightness_prob: 0.5
+  gaussian_noise_prob: 0.5
+  jpeg_compression_prob: 0.2
+  rotation_prob: 1.0
+  color_jitter_prob: 0.8
+
+cutmix_or_mixup: true
+
+# train
+epochs: 50
+use_fp16: true
+dtype: "bf16"
+device_type: "cuda:0"
+clip_grad: 3.0
+
+# optimizer parameters
+optim: "adoptw"
+base_lr: 2e-4
+min_lr: 1e-6
+betas: [0.9, 0.9999]
+momentum: 0.9
+weight_decay: 0.02
+label_smoothing: 0.1
+
+# scheduler parameters
+warmup_epochs: 4
+warmup_start_lr: 0
